@@ -1,0 +1,86 @@
+# Managed by Adam Lowe, Data Engineer.
+
+# Ignore all csvs
+*.csv
+
+# Ignore all Excel files
+*.xls
+*.xlsx
+*.xlsm
+
+# Ignore all err files
+*.err
+
+# Ignore all log files
+*.log
+
+# Ignore all pid files
+*.pid
+
+# Ignore all out files
+*.out
+
+# Ignore all cfg files
+*.cfg
+
+# Ignore all db files
+*.db
+
+# Ignore all pycache
+*.pyc
+
+# ignore all txt
+*.txt
+
+# ignore all json
+*.json
+
+# Various folders
+.aws
+.azure
+.cache
+.config
+.docker
+.dotnet
+.ipython
+.local
+.vscode
+.vscode-server
+.ruff_cache
+.selected_editor
+.lesshst
+airflow_env
+server-backups
+.bash_history
+.bash_logout
+.bashrc
+.motd_shown
+.mysql_history
+.profile
+.sudo_as_admin_successful
+.wget-hsts
+.gitconfig
+airflow/dags/__pycache__
+airflow/dags/domain_queries/__pycache__
+airflow/logs
+airflow/temp
+airflow/airflow-scheduler.err
+airflow/webserver_config.py
+airflow/dags/sql_test.ipynb
+airflow/dags/test.ipynb
+airflow/dags/hello_world_dag.py
+airflow/server-config.json
+airflow/email-config.json
+airflow/target-source-config.json
+snap/
+
+# config files
+support-providers-config.json
+airflow/email-config copy 2.json
+airflow/simple_auth_manager_passwords.json.generated
+
+# venv
+airflow-start.sh
+
+# python history
+.python_history
