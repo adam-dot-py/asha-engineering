@@ -37,6 +37,7 @@
 
 # Various folders
 .aws
+.duckdb
 .azure
 .cache
 .config
@@ -84,3 +85,6 @@ airflow-start.sh
 
 # python history
 .python_history
+
+# duckdb history
+.duckdb_history
