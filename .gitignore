@@ -88,3 +88,4 @@ airflow-start.sh
 
 # duckdb history
 .duckdb_history
+ducklake_setup.py
