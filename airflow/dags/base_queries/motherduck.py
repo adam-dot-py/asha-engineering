@@ -1,0 +1,8 @@
+import duckdb
+
+token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRhdGFAYXNoLXNoYWhhZGEub3JnIiwic2Vzc2lvbiI6ImRhdGEuYXNoLXNoYWhhZGEub3JnIiwicGF0IjoiZzVnamp1MUk5bHM2RlJuVmZ2UXlNWFY1SXptclBFNXBfQWludUFVQkZQZyIsInVzZXJJZCI6Ijk4ZmVmMGYxLTk5NDItNGZkNi1hOWQ5LTMyZjhiNmJlYzA0OCIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1MzExODY5OX0.0uGxJz6KmV5eNehMhURvG6Nb_6N3olFPTKyvECZt_l4"
+
+duckdb.connect(f'md:?motherduck_token={token}')
+duckdb.sql("load ducklake;")
+# duckdb.sql("CREATE DATABASE my_ducklake (TYPE DUCKLAKE);")
+duckdb.close()

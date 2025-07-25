@@ -1,21 +1,30 @@
 # packages
-import os
+import duckdb
 import time
-import re
 import json
 import pandas as pd
-import mysql.connector
 import smtplib
-from pathlib import Path
-from mysql.connector import Error
+from functools import wraps
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
 
 def log_execution(func):
     """
     """
     
+    @wraps(func)
     def etl_task_time(*args, **kwargs):
         start_time = time.time()
         print(f"Starting '{func.__name__}'...")
@@ -25,33 +34,29 @@ def log_execution(func):
 
     return etl_task_time
 
-def server_connection(host, user, root_pass, db_name):
-    """
+def motherduck_connection(token):
+    """_docstring
     """
     
-    try:
-        # Establish the MySQL connection
-        connection = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=root_pass,
-            database=db_name
-        )
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
         
-        if connection.is_connected():
-            print(f"Connected to {db_name}")
-        
-        return connection
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
     
-    except Exception as e:
-        print(f"Connection failed -> {e}")
-        return None
+        return wrapper
+    return connection_decorator
 
 @log_execution
-def send_lease_expiry_notification(host, user, root_pass, base_table_name, **kwargs):
+@motherduck_connection(token=token)
+def send_lease_expiry_notification(token, schema, base_table_name, con, **kwargs):
     """
     """
     
+    # establish connection
+    con.sql("use asha_production;")
     # email setup
     email_config = "/home/asha/airflow/email-config.json"
     with open(email_config, 'r') as fp:
@@ -62,37 +67,21 @@ def send_lease_expiry_notification(host, user, root_pass, base_table_name, **kwa
     email_sender = email_config.get('email_sender')
     email_password = email_config.get('email_password')
     email_recipient = email_config.get('email_recipient')
-        
-    # establish connection to base
-    base_mysqlconnection = server_connection(host=host, user=user, root_pass=root_pass, db_name='base')
     
     # estbalish dates
-    current_date = datetime.today().date()
+    current_date = datetime.today()
     threshold_date = current_date + timedelta(days=28)
     load_date = datetime.now()
-    
-    base_cursor = base_mysqlconnection.cursor()
     
     base_query = f"""
       select
         SupportProviders,
         PropertyAddress,
         LeaseEndDate
-      from base.{base_table_name}
+      from {schema}.{base_table_name}
     """
     
-    base_cursor.execute(base_query)
-    
-    # Fetch all the results from the table
-    base_result = base_cursor.fetchall()
-
-    # Convert the result to a dataframe
-    df = pd.DataFrame(base_result, columns=base_cursor.column_names)
-    
-    # Close the connections
-    base_cursor.close()
-    base_mysqlconnection.close()
-    
+    df = con.sql(base_query).df()    
     expiring_leases = df[(df['LeaseEndDate'] >= current_date) & (df['LeaseEndDate'] <= threshold_date)]
     
     if not expiring_leases.empty:
@@ -128,8 +117,8 @@ def send_lease_expiry_notification(host, user, root_pass, base_table_name, **kwa
         
         print("Email sent")
         
-    else:
-        print("No email to send")
+    # else:
+    #     print("No email to send")
         # # REMOVE AFTER TEST
         # # send email
         # formatted_current_date = current_date.strftime("%d %B %Y")
@@ -150,15 +139,12 @@ def send_lease_expiry_notification(host, user, root_pass, base_table_name, **kwa
     
 if __name__ == "__main__":
     
-    server_config = "/home/asha/airflow/server-config.json"
-    
-    with open(server_config, 'r') as fp:
-        config = json.load(fp)
-    
     # this is the ETL task
-    host = config.get('host')
-    user = config.get('user')
-    root_pass = config.get('root_pass')
+    schema = 'bronze'
     base_table_name = 'dbo_lease_database'
 
-    send_lease_expiry_notification(host=host, user=user, root_pass=root_pass, base_table_name=base_table_name)
+    send_lease_expiry_notification(
+        token=token,
+        schema=schema,
+        base_table_name=base_table_name
+    )

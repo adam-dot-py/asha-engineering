@@ -17,36 +17,29 @@ from pathlib import Path
 from datetime import datetime
 from airflow.decorators import dag, task
 
-# import server config file
-server_config = "/home/asha/airflow/server-config.json"
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
 with open(server_config, "r") as fp:
     config = json.load(fp)
     
-# source target config
-source_config = "/home/asha/airflow/target-source-config.json"
-with open(source_config, "r") as fp:
-    src_config = json.load(fp)
-        
-# connect to target source
-target_source_path = src_config.get("target_source_path")
+token = config['token']
+target_source_path = target_config.get("target_source_path")
+schema = "bronze"
 
 # this is the path to the tsm-responses file
 tsm_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-responses.xlsx")
 tsm_sea_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-sea-responses.xlsx")
 
-# prepare the details to connect to the database
-host = config.get("host")
-user = config.get("user")
-root_pass = config.get("root_pass")
-db_name = "base"
-
 @task
 def generate_tsm_responses():
     create_base_tsm_table(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='tsm_responses', 
         tsm_file=tsm_file, 
         tsm_sea_file=tsm_sea_file
@@ -55,10 +48,8 @@ def generate_tsm_responses():
 @task
 def generate_dbo_remittance():
     extract_dbo_remittance_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_remittance', 
         target_source_path=target_source_path, 
         target_sheet='Remittances'
@@ -67,10 +58,8 @@ def generate_dbo_remittance():
 @task
 def generate_dbo_clawback_data():
     extract_dbo_clawback_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema, 
         table_name='dbo_clawbacks', 
         target_source_path=target_source_path, 
         target_sheet='Clawbacks'
@@ -79,10 +68,8 @@ def generate_dbo_clawback_data():
 @task
 def generate_dbo_property_data():
     extract_dbo_property_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_property_submissions', 
         target_source_path=target_source_path, 
         target_sheet='Property Sub'
@@ -91,10 +78,8 @@ def generate_dbo_property_data():
 @task
 def generate_dbo_hqi_data():
     extract_dbo_hqi_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_hqi', 
         target_source_path=target_source_path, 
         target_sheet='HQIs'
@@ -103,10 +88,8 @@ def generate_dbo_hqi_data():
 @task
 def generate_dbo_voids_data():
     extract_dbo_voids_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_voids', 
         target_source_path=target_source_path, 
         target_sheet='Voids'
@@ -115,10 +98,8 @@ def generate_dbo_voids_data():
 @task
 def generate_dbo_property_database_data():
     extract_dbo_property_database_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema, 
         table_name='dbo_property_database', 
         target_source_path=target_source_path, 
         target_sheet='Master Property Database'
@@ -127,10 +108,8 @@ def generate_dbo_property_database_data():
 @task
 def generate_dbo_leavers_data():
     extract_dbo_leavers_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_leavers', 
         target_source_path=target_source_path, 
         target_sheet='Leavers'
@@ -139,10 +118,8 @@ def generate_dbo_leavers_data():
 @task
 def generate_dbo_lease_terminations_data():
     extract_dbo_lease_terminations_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_lease_terminations', 
         target_source_path=target_source_path, 
         target_sheet='Lease Termination'
@@ -151,10 +128,8 @@ def generate_dbo_lease_terminations_data():
 @task
 def generate_dbo_dal_properties_data():
     extract_dbo_dal_properties_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_dal_properties',
         target_source_path=target_source_path, 
         target_sheet='Properties Under SP with DAL'
@@ -163,10 +138,8 @@ def generate_dbo_dal_properties_data():
 @task
 def generate_dbo_dal_summary_data():
     extract_dbo_dal_summary_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_dal_summary_data',
         target_source_path=target_source_path, 
         target_sheet='DAL Summary'
@@ -175,10 +148,8 @@ def generate_dbo_dal_summary_data():
 @task
 def generate_dbo_rc_ratio_data():
     extract_dbo_rc_ratio_data(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_rc_ratio_data', 
         target_source_path=target_source_path, 
         target_sheet='RC Ratio'
@@ -187,10 +158,8 @@ def generate_dbo_rc_ratio_data():
 @task
 def generate_dbo_gross_surplus():
     extract_dbo_gross_surplus(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_gross_surplus', 
         target_source_path=target_source_path, 
         target_sheet='Gross Surplus'
@@ -199,10 +168,8 @@ def generate_dbo_gross_surplus():
 @task
 def generate_dbo_piop():
     extract_dbo_piop(
-        host=host, 
-        user=user, 
-        root_pass=root_pass, 
-        db_name=db_name, 
+        token=token,
+        schema=schema,
         table_name='dbo_piop', 
         target_source_path=target_source_path, 
         target_sheet='PIOP'

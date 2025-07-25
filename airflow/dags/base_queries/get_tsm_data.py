@@ -1,14 +1,52 @@
 # packages
-import re
+import duckdb
 import json
+import time
 import pandas as pd
-import numpy as np
-import mysql.connector
 from pathlib import Path
-from datetime import datetime
+from functools import wraps
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
+
+def log_execution(func):
+    """
+    """
+    
+    @wraps(func)
+    def etl_task_time(*args, **kwargs):
+        start_time = time.time()
+        print(f"Starting '{func.__name__}'...")
+        result = func(*args, **kwargs)
+        print(f"Finished '{func.__name__}' in {time.time() - start_time} seconds.")
+        return result
+
+    return etl_task_time
+
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
+    
+        return wrapper
+    return connection_decorator
 
 # create a function to extract the data
-def create_base_tsm_table(host: str, user: str, root_pass: str, db_name: str, table_name: str, tsm_file: str, tsm_sea_file: str) -> None:
+@log_execution
+@motherduck_connection(token=token)
+def create_base_tsm_table(token, schema, table_name: str, tsm_file: str, tsm_sea_file: str, con, **kwargs) -> None:
     """Create relevant base data, transform and offload to the database and base table.
 
     Args:
@@ -19,6 +57,9 @@ def create_base_tsm_table(host: str, user: str, root_pass: str, db_name: str, ta
         table_name (str): the name of the table
         tsm_file (str): the path to the Excel file that is being populated with survey responses
     """
+    
+    # motherduck
+    con.sql("USE asha_production;")
     
     # Read in the TSM raw excel file
     df_tsm = pd.read_excel(tsm_file, sheet_name='responses')
@@ -98,105 +139,25 @@ def create_base_tsm_table(host: str, user: str, root_pass: str, db_name: str, ta
     # set the new headers
     df.columns = tsm_column_headers
     
-    # Execute the query
-    try:
-        # Establish connection to the server
-        mydb = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=root_pass,
-            database=db_name
-        )
-
-        # create mysql connection
-        print(f"Attempting connection to {db_name}")
-        
-        # Create a cursor object
-        mycursor = mydb.cursor()
-        
-        # this will create a string which is passed into the SQL query. We take the column header and its respective data type as defined above.
-        column_headers = [f"`{col}` {data_type}" for col, data_type in column_data_types.items()]
-        # column_headers.append('PRIMARY KEY (ID)')
-        column_headers_string = ', '.join(column_headers)
-        
-        # drop the table first
-        try:
-            drop_query = f"drop table {table_name};"
-            mycursor.execute(drop_query)
-            print(f"Dropped -> {table_name}")
-        except Exception as e:
-          pass
-        
-        # create the table again
-        create_table_query = "CREATE TABLE IF NOT EXISTS {table_name} ({column_headers_string})".format(table_name = table_name, column_headers_string = column_headers_string)
-        print(f"Create query -> {create_table_query}")
-        mycursor.execute(create_table_query)
-        print(f"Recreated -> {table_name}")
-        print("Connection successful")
-
-        # add data to our database
-        for _, row in df.iterrows():
-            
-            # generate insert statement
-            values = []
-            for value in row:
-                if isinstance(value, int):
-                    values.append(f"'{value}'")
-                elif pd.isnull(value):
-                    values.append('NULL')
-                elif isinstance(value, str):
-                    value = value.strip()  # Remove leading and trailing whitespace
-                    if value.lower() == "not applicable/ don’t know":
-                        value = "not applicable/ do not know"
-                    if value.lower() == "don’t know":
-                        value = "do not know"
-                    # account for mistakes in question labels
-                    if value.lower() == "fairly satisifed":
-                        value = "fairly satisfied"
-                    if value.lower() == "fairly disatisifed":
-                        value = "fairly dissatisfied"
-                    else: value = re.sub(r"'", r"/", value).strip().lower() # replace apostrophre's with forward slash, strip and lower
-                    values.append(f"'{value}'")
-                elif isinstance(value, pd.Timestamp):
-                    values.append(f"'{value}'")
-                    
-            # create the values string, to be passed in the query
-            values_string = ', '.join(values)
-            insert_query = f"insert into {table_name} values ({values_string})"
-            
-            # execute and commit changes
-            mycursor.execute(insert_query)
-            mydb.commit()
-        print(f"Successfully created / updated -> {table_name}")
-    except Exception as e:
-        print(f"Error -> {e}")
-    finally:
-        # Close the cursor and connection to the database
-        if mycursor:
-            mycursor.close()
-        if mydb:
-            mydb.close()
-
-if __name__ == "__main__":
+    # write to motherduck
+    con.sql(f"CREATE OR REPLACE TABLE {schema}.{table_name} AS SELECT * FROM df;")
+    con.close()
     
-    # import server config file
-    server_config = "/home/asha/airflow/server-config.json"
-
-    with open(server_config, "r") as fp:
-        config = json.load(fp)
-
-    # prepare the details to connect to the databases
-    host = config.get("host")
-    user = config.get("user")
-    root_pass = config.get("root_pass")
+if __name__ == "__main__":
     
     # this is the path to the tsm-responses file
     tsm_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-responses.xlsx")
     tsm_sea_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-sea-responses.xlsx")
 
     # prepare the details to connect to the database
-    db_name = "base"
+    schema = "bronze"
     table_name = 'tsm_responses'
     
     # execute the function
-    create_base_tsm_table(host, user, root_pass, db_name, table_name, tsm_file, tsm_sea_file)
+    create_base_tsm_table(
+        token=token,
+        schema=schema,
+        table_name=table_name,
+        tsm_file=tsm_file,
+        tsm_sea_file=tsm_sea_file
+    )

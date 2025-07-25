@@ -1,18 +1,27 @@
 # packages
-import os
+import duckdb
 import time
-import re
 import json
 import pandas as pd
-import mysql.connector
-from pathlib import Path
-from mysql.connector import Error
 from datetime import datetime
+from functools import wraps
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
 
 def log_execution(func):
     """
     """
     
+    @wraps(func)
     def etl_task_time(*args, **kwargs):
         start_time = time.time()
         print(f"Starting '{func.__name__}'...")
@@ -22,62 +31,45 @@ def log_execution(func):
 
     return etl_task_time
 
-def server_connection(host, user, root_pass, db_name):
-    """
-    """
-    
-    try:
-        # Establish the MySQL connection
-        connection = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=root_pass,
-            database=db_name
-        )
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
         
-        if connection.is_connected():
-            print(f"Connected to {db_name}")
-        
-        return connection
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
     
-    except Exception as e:
-        print(f"Connection failed -> {e}")
-        return None
+        return wrapper
+    return connection_decorator
 
 @log_execution
-def transform_dbo_voids_data(host, user, root_pass, base_table_name, domain_table_name, **kwargs):
+@motherduck_connection(token=token)
+def transform_dbo_voids_data(bronze_schema, gold_schema, bronze_table_name, gold_table_name, con, **kwargs):
+    """_docstring
+    
     """
-    """
     
-    base_mysqlconnection = server_connection(host=host, user=user, root_pass=root_pass, db_name='base')
-    domain_mysqlconnection = server_connection(host=host, user=user, root_pass=root_pass, db_name='domain')
-    load_date = datetime.now()
-    
-    base_cursor = base_mysqlconnection.cursor()
-    base_query = f"select * from base.{base_table_name}"
-    base_cursor.execute(base_query)
-    
-    # Fetch all the results from the table
-    base_result = base_cursor.fetchall()
-
-    # Close the connections
-    base_mysqlconnection.close()
+    # connect to motherduck
+    con.sql("USE asha_production;")
+    con.sql(f"CREATE SCHEMA IF NOT EXISTS {gold_schema};")
     
     # Convert the result to a dataframe
-    df = pd.DataFrame(base_result, columns=base_cursor.column_names)
+    bronze_df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
     
     # drop the base load date
-    df = df.drop(columns='LoadDate')
+    bronze_df = bronze_df.drop(columns='LoadDate')
     
     # melt the dataframe
     mdf = pd.melt(
-        df,
+        bronze_df,
         id_vars=["SupportProviders", "Units"],
         var_name="Cycle",
         value_name="Value",
     )
     
     # add load date
+    load_date = datetime.now()
     mdf['LoadDate'] = load_date
     
     expected_schema = [
@@ -95,84 +87,22 @@ def transform_dbo_voids_data(host, user, root_pass, base_table_name, domain_tabl
         "Value": 'FLOAT',
         "LoadDate": 'TIMESTAMP'
     }
-                 
-    # create the table
-    # this will create a string which is passed into the SQL query. We take the column header and its respective data type as defined above.
-    column_headers = [f"`{col}` {data_type}" for col, data_type in column_data_types.items()]
     
-    # looks like this column_headers.append('PRIMARY KEY (ID)')
-    column_headers_string = ', '.join(column_headers)
-    
-    # establish cursor connection
-    domain_cursor = domain_mysqlconnection.cursor()
-    
-    # drop the table
-    try:
-        drop_query = f"DROP TABLE domain.{domain_table_name}"
-        domain_cursor.execute(drop_query)
-        print(f"Dropped -> domain.{domain_table_name}")
-    except:
-        print(f"Does not exist yet -> domain.{domain_table_name}")
-    
-    # create the table again
-    try:
-        create_table_query = "CREATE TABLE IF NOT EXISTS {domain_table_name} ({column_headers_string})".format(domain_table_name=domain_table_name, column_headers_string=column_headers_string)
-        print(f"Create query -> {create_table_query}")
-        domain_cursor.execute(create_table_query)
-        print(f"Recreated -> {domain_table_name}")
-    except Exception as e:
-        print(e)
-        
-    # add data to database
-    for _, row in mdf.iterrows():
-        
-        # generate insert statement
-        values = []
-        for value in row:
-            if isinstance(value, int):
-                values.append(f"'{value}'")
-            elif isinstance(value, float):
-                values.append(f"'{value}'")
-            elif pd.isnull(value):
-                values.append('NULL')
-            elif isinstance(value, str):
-                value = value.strip()  # Remove leading and trailing whitespace
-                value = re.sub(r"'", r"", value) # replace apostrophre's with nothing
-                values.append(f"'{value}'")
-            elif isinstance(value, pd.Timestamp):
-                values.append(f"'{value}'")
-                
-        # create the values string, to be passed in the query
-        values_string = ', '.join(values)
-        insert_query = f"insert into {domain_table_name} values ({values_string})"
-        
-        # execute and commit changes
-        try:
-            domain_cursor.execute(insert_query)
-        except Exception as e:
-            print(f"Something went wrong -> {insert_query}")
-            domain_cursor.close()
-            domain_mysqlconnection.close()
-            raise e
-        
-    domain_mysqlconnection.commit()
-    domain_cursor.close()
-    domain_mysqlconnection.close()
-    print("MySQL connection is closed")
-                                
+    # write to motherduck
+    con.sql(f"CREATE OR REPLACE TABLE {gold_schema}.{gold_table_name} AS SELECT * FROM mdf;")
+    con.close() 
+                              
 if __name__ == "__main__":
     
-    # import server config file
-    server_config = "/home/asha/airflow/server-config.json"
+    # this is the ETL task
+    bronze_schema = 'bronze'
+    gold_schema = 'gold'
+    bronze_table_name = 'dbo_voids'
+    gold_table_name = 'fact__voids'
 
-    with open(server_config, "r") as fp:
-        config = json.load(fp)
-
-    # prepare the details to connect to the databases
-    host = config.get("host")
-    user = config.get("user")
-    root_pass = config.get("root_pass")
-    base_table_name = 'dbo_voids'
-    domain_table_name = 'fact__voids'
-    
-    transform_dbo_voids_data(host=host, user=user, root_pass=root_pass, base_table_name=base_table_name, domain_table_name=domain_table_name)
+    transform_dbo_voids_data(
+        bronze_schema=bronze_schema,
+        gold_schema=gold_schema,
+        bronze_table_name=bronze_table_name,
+        gold_table_name=gold_table_name
+    )

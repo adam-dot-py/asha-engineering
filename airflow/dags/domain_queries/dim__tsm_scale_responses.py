@@ -1,14 +1,26 @@
 # packages
+import duckdb
 import pandas as pd
-import numpy as np
 import json
 import time
-import mysql.connector
+from functools import wraps
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
 
 def log_execution(func):
-    """logs the execution time of a function
+    """
     """
     
+    @wraps(func)
     def etl_task_time(*args, **kwargs):
         start_time = time.time()
         print(f"Starting '{func.__name__}'...")
@@ -18,17 +30,26 @@ def log_execution(func):
 
     return etl_task_time
 
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
+    
+        return wrapper
+    return connection_decorator
+
 @log_execution
-def create_domain_tsm_scale_responses_table(host, user, root_pass, domain_table, **kwargs) -> None:
+@motherduck_connection(token=token)
+def create_domain_tsm_scale_responses_table(schema, domain_table, con, **kwargs) -> None:
     
-    # Establish connection to domain
-    domain_db = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=root_pass,
-            database='domain'
-        )
-    
+    # connect to motherduck
+    con.sql("USE asha_production;")
+    con.sql(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+
     # ResponseText, Scale_SK, ResponseSK, ResponseWeight, Sentiment
     #TODO: Add sentiment
     domain_dict = {
@@ -80,65 +101,12 @@ def create_domain_tsm_scale_responses_table(host, user, root_pass, domain_table,
         "Sentiment"
     ]]
     
-    # esablish connection to domain
-    domain_cursor = domain_db.cursor()
-    
-    column_data_types = {
-        "Response_SK" : "int AUTO_INCREMENT primary key not null",
-        "Scale_SK" : "int not null",
-        "ResponseText" : "VARCHAR(50)",
-        "ResponseWeight" : "int not null",
-        "Sentiment" : "VARCHAR(20)"
-    }
-    
-    column_headers = [f"{col} {data_type}" for col, data_type in column_data_types.items()]
-    column_headers_string = ", ".join(column_headers)
-    
-    # drop the table if it exists already, then recreate it
-    try:
-        print(f"Dropping existing -> {domain_table}")
-        drop_query = f"drop table {domain_table};"
-        domain_cursor.execute(drop_query)
-        print(f"Dropped -> {domain_table}")
-        
-    except Exception as e:
-        print(f"Failed -> {e}")
-        
-    finally:
-        # create the table
-        create_query = f"create table if not exists {domain_table} ({column_headers_string});"
-        domain_cursor.execute(create_query)
-        print(f"Created -> {domain_table}")
-        
-    # insert the data
-    row_count = 0
-    for _, row in df.iterrows():
-        values = []
-        for value in row:
-            values.append(f"'{value}'")
-            row_count += 1
-    
-        values_string = ", ".join(values)
-        insert_query = f"insert into {domain_table} (Scale_SK, ResponseText, ResponseWeight, Sentiment) values ({values_string});"
-        domain_cursor.execute(insert_query)
-    
-    # commit changes and close connections
-    domain_db.commit()
-    domain_cursor.close()
-    domain_db.close()
+    con.sql(f"CREATE OR REPLACE TABLE {schema}.{domain_table} AS SELECT * FROM df;")
+    con.close()
 
 if __name__ == '__main__':
     
-    # import server config file
-    server_config = "/home/asha/airflow/server-config.json"
-
-    with open(server_config, "r") as fp:
-        config = json.load(fp)
-
-    # prepare the details to connect to the databases
-    host = config.get("host")
-    user = config.get("user")
-    root_pass = config.get("root_pass")
+    schema = 'silver'
     domain_table = 'dim__tsm_scale_responses'
 
-    create_domain_tsm_scale_responses_table(host, user, root_pass, domain_table)
+    create_domain_tsm_scale_responses_table(schema, domain_table)

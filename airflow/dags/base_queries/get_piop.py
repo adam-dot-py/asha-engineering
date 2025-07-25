@@ -10,11 +10,24 @@ import json
 import time
 import pandas as pd
 from datetime import datetime
+from functools import wraps
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
 
 def log_execution(func):
     """
     """
     
+    @wraps(func)
     def etl_task_time(*args, **kwargs):
         start_time = time.time()
         print(f"Starting '{func.__name__}'...")
@@ -24,13 +37,25 @@ def log_execution(func):
 
     return etl_task_time
 
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
+    
+        return wrapper
+    return connection_decorator
+
 @log_execution
-def extract_dbo_piop(token, schema, table_name, target_source_path: str, target_sheet: str, **kwargs):
+@motherduck_connection(token=token)
+def extract_dbo_piop(schema, table_name, target_source_path: str, target_sheet: str, con, **kwargs):
     """
     """
     
-    # motherduck connect
-    con = duckdb.connect(f'md:?motherduck_token={token}')
+    # motherduck connect - con is passed via the decorator function @motherduck_connection
     con.sql("use asha_production;")
   
     load_date = datetime.now()
@@ -80,17 +105,6 @@ def extract_dbo_piop(token, schema, table_name, target_source_path: str, target_
                             con.close()        
                                 
 if __name__ == "__main__":
-    
-    # import motherduck token and target source config
-    target_source_config = "/home/asha/airflow/target-source-config.json"
-    server_config = "/home/asha/airflow/duckdb-config.json"
-        
-    with open(target_source_config, "r") as t_con:
-        target_config = json.load(t_con)
-
-    with open(server_config, "r") as fp:
-        config = json.load(fp)
-    token = config['token']
     
     # this is the ETL task
     target_source_path = target_config.get("target_source_path")

@@ -1,8 +1,8 @@
 # packages
-import pandas as pd
+import duckdb
 import json
-import mysql.connector
 from fuzzywuzzy import fuzz
+from functools import wraps
 
 # dictionary containing keywords
 categories = {
@@ -72,30 +72,36 @@ def replace_text(text):
   """Escapes single quotes within a string for safe MySQL insertion."""
   return text.replace("'", "\\'")
 
-def fuzzy_group_data(host, user, root_pass, base_table, column, group_column_name):
+# import motherduck token and target source config
+server_config = "/home/asha/airflow/duckdb-config.json"
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
+
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
+    
+        return wrapper
+    return connection_decorator
+
+@motherduck_connection(token=token)
+def fuzzy_group_data(bronze_schema, bronze_table_name, column, group_column_name, con, **kwargs):
     """_docstring
     
     """
         
-    # Establish connection to base
-    base_db = mysql.connector.connect(
-        host=host,
-        user=user,
-        password=root_pass,
-        database='base'
-    )
+    # connect to motherduck
+    con.sql("USE asha_production;")
 
-    # attached to base
-    base_cursor = base_db.cursor()
-    
-    base_query = f"select {column} from {base_table};"
-    base_cursor.execute(base_query)
-
-    # Fetch all the results
-    base_result = base_cursor.fetchall()
-
-    # Convert the result to a dataframe
-    df = pd.DataFrame(base_result, columns=base_cursor.column_names)
+    # get the bronze table
+    df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
     df = df.drop_duplicates()
     
     for _, row in df.iterrows():
@@ -115,33 +121,30 @@ def fuzzy_group_data(host, user, root_pass, base_table, column, group_column_nam
                 # """
                 
                 query = f"""
-                UPDATE base.{base_table}
+                UPDATE {bronze_schema}.{bronze_table_name}
                 SET {group_column_name} = '{resolved_value}'
                 WHERE {column} = '{input_value}';
                 """
-                # create_query = row['Query']
-                base_cursor.execute(query)
-                print(f"Executed -> {query}")
+                # write motherduck
+                con.sql(query)
+
             except Exception as e:
                 print(f"Err: {e}")
     
-    # commit changes and close connections
-    base_db.commit()
-    base_cursor.close()
-    base_db.close()
+    # close motherduck
+    con.close()
 
 if __name__ == "__main__":
 
-    # get server config details
-    server_config = "/home/asha/airflow/server-config.json"
-
-    with open(server_config, 'r') as fp:
-        config = json.load(fp)
-
-    host = config.get('host')
-    user = config.get('user')
-    root_pass = config.get('root_pass')
-    base_table = None
+    # this is the ETL task
+    bronze_schema = 'bronze'
+    bronze_table_name = None
     column = None
     
-    fuzzy_group_data(host=host, user=user, root_pass=root_pass, base_table=base_table, column=column, group_column_name='GroupedReferralAgency')
+    fuzzy_group_data(
+        token=token,
+        bronze_schema=bronze_schema,
+        bronze_table_name=bronze_table_name,
+        column=column,
+        group_column_name='GroupedReferralAgency'
+    )

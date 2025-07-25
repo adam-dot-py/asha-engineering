@@ -4,20 +4,31 @@ sys.path.append('/home/asha/airflow/dags/custom_functions')
 from lookup_support_provider import lookup_support_provider
 
 # packages
+import duckdb
 import os
 import json
 import time
 import re
 import pandas as pd
-import mysql.connector
-from pathlib import Path
-from mysql.connector import Error
 from datetime import datetime
+from functools import wraps
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+token = config['token']
 
 def log_execution(func):
     """
     """
     
+    @wraps(func)
     def etl_task_time(*args, **kwargs):
         start_time = time.time()
         print(f"Starting '{func.__name__}'...")
@@ -27,38 +38,29 @@ def log_execution(func):
 
     return etl_task_time
 
-def server_connection(host, user, root_pass, db_name):
-    """
-    """
-    
-    try:
-        # Establish the MySQL connection
-        connection = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=root_pass,
-            database=db_name
-        )
+def motherduck_connection(token):
+    def connection_decorator(func):
+        con = duckdb.connect(f'md:?motherduck_token={token}')
         
-        if connection.is_connected():
-            print(f"Connected to {db_name}")
-        
-        return connection
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # pass con as a keyword argument for use in other functions
+            return func(*args, con=con, **kwargs)
     
-    except Exception as e:
-        print(f"Connection failed -> {e}")
-        return None
+        return wrapper
+    return connection_decorator
 
 @log_execution
-def extract_dbo_support_notes_data(host, user, root_pass, db_name, table_name, target_source_path: str, target_sheet: str, **kwargs):
+@motherduck_connection(token=token)
+def extract_dbo_support_notes_data(schema, table_name, target_source_path: str, target_sheet: str, con, **kwargs):
     """
     """
 
-    mysqlconnection = server_connection(host, user, root_pass, db_name)
+    con.sql("use asha_production;")
     load_date = datetime.now()
     for root, dirs, files in os.walk(target_source_path):
         for file in files:
-            if file == "PBI DATA.xlsx":
+            if file == "PBI DATA - Copy.xlsx":
                 file_path = os.path.join(root, file)
                 with pd.ExcelFile(file_path) as xls:
                     for sheet in xls.sheet_names:
@@ -67,8 +69,6 @@ def extract_dbo_support_notes_data(host, user, root_pass, db_name, table_name, t
                             
                             # remove spaces from columns
                             df.columns = [col.replace(" ", "") for col in df.columns]
-                            
-                            print(df.columns)
                             
                             # filter
                             df = df.drop(columns=['Total'])
@@ -110,83 +110,13 @@ def extract_dbo_support_notes_data(host, user, root_pass, db_name, table_name, t
                             
                             # apply the schema
                             df = df[expected_schema]
-                 
-                            # create the table
-                            # this will create a string which is passed into the SQL query. We take the column header and its respective data type as defined above.
-                            column_headers = [f"`{col}` {data_type}" for col, data_type in column_data_types.items()]
                             
-                            # looks like this column_headers.append('PRIMARY KEY (ID)')
-                            column_headers_string = ', '.join(column_headers)
-                            
-                            # establish cursor connection
-                            mycursor = mysqlconnection.cursor()
-                            
-                            # drop the table
-                            try:
-                                drop_query = "DROP TABLE {db_name}.{table_name}".format(db_name=db_name, table_name=table_name)
-                                mycursor.execute(drop_query)
-                                print(f"Dropped -> {db_name}.{table_name}")
-                            except:
-                                print(f"Does not exist yet -> {db_name}.{table_name}")
-                            
-                            # create the table again
-                            try:
-                                create_table_query = "CREATE TABLE IF NOT EXISTS {table_name} ({column_headers_string})".format(table_name = table_name, column_headers_string = column_headers_string)
-                                print(f"Create query -> {create_table_query}")
-                                mycursor.execute(create_table_query)
-                                print(f"Recreated -> {table_name}")
-                            except Exception as e:
-                                print(e)
-                                
-                            # add data to database
-                            for _, row in df.iterrows():
-                                
-                                # generate insert statement
-                                values = []
-                                for value in row:
-                                    if isinstance(value, int):
-                                        values.append(f"'{value}'")
-                                    elif isinstance(value, float):
-                                        values.append(f"'{value}'")
-                                    elif pd.isnull(value):
-                                        values.append('NULL')
-                                    elif isinstance(value, str):
-                                        value = value.strip()  # Remove leading and trailing whitespace
-                                        value = re.sub(r"'", r"", value) # replace apostrophre's with nothing
-                                        values.append(f"'{value}'")
-                                    elif isinstance(value, pd.Timestamp):
-                                        values.append(f"'{value}'")
-                                        
-                                # create the values string, to be passed in the query
-                                values_string = ', '.join(values)
-                                insert_query = f"insert into {table_name} values ({values_string})"
-                                
-                                # execute and commit changes
-                                try:
-                                    mycursor.execute(insert_query)
-                                except Exception as e:
-                                    print(f"Something went wrong -> {insert_query}")
-                                    mysqlconnection.close()
-                                    mycursor.close()
-                                    raise e
-                            mysqlconnection.commit()
-                            mycursor.close()
-                            mysqlconnection.close()
-                            print("MySQL connection is closed")
-                                
+                            # write to motherduck
+                            con.sql(f"CREATE OR REPLACE TABLE {schema}.{table_name} AS SELECT * FROM df;")
+                            con.close()
+ 
 if __name__ == "__main__":
-    
-    # import server config file
-    server_config = "/home/asha/airflow/server-config.json"
-
-    with open(server_config, "r") as fp:
-        config = json.load(fp)
-
-    # prepare the details to connect to the databases
-    host = config.get("host")
-    user = config.get("user")
-    root_pass = config.get("root_pass")
-    
+       
     # source target config
     source_config = "/home/asha/airflow/target-source-config.json"
     with open(source_config, "r") as fp:
@@ -196,8 +126,14 @@ if __name__ == "__main__":
     target_source_path = src_config.get("target_source_path")
     
     # this is the ETL task
-    db_name = "base"
+    schema = "bronze"
     table_name = 'dbo_support_notes'
     target_sheet = 'Support Notes'
 
-    extract_dbo_support_notes_data(host=host, user=user, root_pass=root_pass, db_name=db_name, table_name=table_name, target_source_path=target_source_path, target_sheet=target_sheet)
+    extract_dbo_support_notes_data(
+        token=token,
+        schema=schema,
+        table_name=table_name,
+        target_source_path=target_source_path,
+        target_sheet=target_sheet
+    )
