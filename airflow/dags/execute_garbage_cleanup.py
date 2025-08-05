@@ -2,10 +2,8 @@ import duckdb
 import json
 from garbage_cleanup.garbage_cleanup import cleanup_data
 from garbage_cleanup.fuzzy_cleanup import fuzzy_group_data
-from pathlib import Path
 from datetime import datetime
 from airflow.decorators import dag, task
-from functools import wraps
 
 # import motherduck token and target source config
 server_config = "/home/asha/airflow/duckdb-config.json"
@@ -51,9 +49,9 @@ def fuzzy_cleanup_tenant_data():
     )
        
 @dag(
-    dag_id="garbage_cleanup",
+    dag_id="cleanup_garbage",
     schedule="*/25 * * * *", # every 25 minutes
-    start_date=datetime(2025, 5, 2),
+    start_date=datetime(2025, 8, 5),
     catchup=False,
     tags=["optimisation"]
 )

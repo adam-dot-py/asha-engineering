@@ -1,9 +1,7 @@
 import duckdb
-import pandas as pd
-import mysql.connector
 import json
-from fuzzywuzzy import process
-from functools import wraps
+from rapidfuzz import process
+from functools import wraps, lru_cache
 
 sexual_orientation_validations = [
     "ASEXUAL",
@@ -30,7 +28,7 @@ gender_validations = [
 disability_validations = [
     "NO KNOWN DISABILITY",
     "A SPECIFIC LEARNING DIFFICULTY SUCH AS DYSLEXIA, DYSPRAXIA OR AD(H)D",
-    "A SOCIAL/COMMUNICATION IMPAIRMENT SUCH AS ASPERGER'S SYNDROME/OTHER AUTISTIC SPECTRUM DISORDER",
+    "A SOCIAL OR COMMUNICATION IMPAIRMENT SUCH AS ASPERGER'S SYNDROME OR OTHER AUTISTIC SPECTRUM DISORDER",
     "A LONG STANDING ILLNESS OR HEALTH CONDITION SUCH AS CANCER, HIV, DIABETES, CHRONIC HEART DISEASE, OR EPILEPSY",
     "A MENTAL HEALTH CONDITION, SUCH AS DEPRESSION, SCHIZOPHRENIA OR ANXIETY DISORDER",
     "A PHYSICAL IMPAIRMENT OR MOBILITY ISSUES, SUCH AS DIFFICULTY USING ARMS OR USING A WHEELCHAIR OR CRUTCHES",
@@ -334,6 +332,7 @@ def motherduck_connection(token):
         return wrapper
     return connection_decorator
 
+@lru_cache(maxsize=None)
 def fuzzy_lookup(x, column):
     
     if column == "SexualOrientation":
@@ -390,49 +389,30 @@ def cleanup_data(bronze_schema, bronze_table_name, con, **kwargs):
     """_docstring
     
     """
-
+    
+    # columns to look at 
     column_checks = ['SexualOrientation', 'Disability', 'Gender', 'Religion', 'Nationality', 'Ethnicity', 'SpokenLanguage', "RiskAssessment"]
-
+    
+    # connect to motherduck
+    con.sql("USE asha_production;")
+    
+    # get the bronze table
+    df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
+    df = df.drop_duplicates()
+    
     for column in column_checks:
+        print(f"Updating {column} column...")
+        df[column] = df[column].astype(str).apply(lambda x: replace_text(fuzzy_lookup(replace_text(x), column)))
         
-        # connect to motherduck
-        con.sql("USE asha_production;")
-
-        # get the bronze table
-        df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
-        df = df.drop_duplicates()
-        
-        for _, row in df.iterrows():
-            
-            input_value = replace_text(str(row[column]))
-            resolved_value = replace_text(fuzzy_lookup(input_value, column))
-            
-            if input_value != resolved_value:
-                try:
-                    # Update the table via garbage collector
-                    query = f"""
-                    UPDATE {bronze_schema}.{bronze_table_name}
-                    SET {column} = CASE 
-                        WHEN {column} IN ('{input_value}') THEN '{resolved_value}' 
-                        ELSE {column} 
-                    END;            
-                    """
-                    
-                    # create_query = row['Query']
-                    con.sql(query)
-                    print(f"Executed -> {query}")
-                except Exception as e:
-                    print(f"Err: {e}")
-        
-        # commit changes and close connections
-        con.close()
-
+    con.sql(f"CREATE OR REPLACE TABLE {bronze_schema}.{bronze_table_name} AS SELECT * from df;")
+    con.close()
+    
 if __name__ == "__main__":
     
     # this is the ETL task
     bronze_schema = 'bronze'
-    bronze_table_name = None
-    column = None
+    bronze_table_name = 'tenant_data'
+    column = 'ReferralAgency'
     
     cleanup_data(
         token=token,

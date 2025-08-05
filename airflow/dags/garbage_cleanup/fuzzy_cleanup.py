@@ -1,8 +1,8 @@
 # packages
 import duckdb
 import json
-from fuzzywuzzy import fuzz
-from functools import wraps
+from rapidfuzz import fuzz
+from functools import wraps, lru_cache
 
 # dictionary containing keywords
 categories = {
@@ -40,7 +40,7 @@ class NotTextError(Exception):
     "Raised if the value passed is not a string"
     pass
 
-
+@lru_cache(maxsize=None)
 def category_match(name: str, categories: dict) -> str:
     """takes a string and compares it to a list of keywords taken from a dictionary, 
     returning the closest matching key (or category)
@@ -104,34 +104,11 @@ def fuzzy_group_data(bronze_schema, bronze_table_name, column, group_column_name
     df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
     df = df.drop_duplicates()
     
-    for _, row in df.iterrows():
-        
-        input_value = replace_text(str(row[column]))
-        resolved_value = category_match(input_value, categories=categories)
-        
-        if input_value != resolved_value:
-            try:
-                # Update the table via garbage collector
-                # query = f"""
-                # update base.{base_table}
-                # set {group_column_name} = case
-                #     when {column} in ('{input_value}') then '{resolved_value}' 
-                #     else {column} 
-                # end;            
-                # """
-                
-                query = f"""
-                UPDATE {bronze_schema}.{bronze_table_name}
-                SET {group_column_name} = '{resolved_value}'
-                WHERE {column} = '{input_value}';
-                """
-                # write motherduck
-                con.sql(query)
-
-            except Exception as e:
-                print(f"Err: {e}")
+    # update it and find matches
+    df[column] = df[column].astype(str).apply(lambda x: category_match(replace_text(x), categories=categories))
     
     # close motherduck
+    con.sql(f"CREATE OR REPLACE TABLE {bronze_schema}.{bronze_table_name} AS SELECT * from df;")
     con.close()
 
 if __name__ == "__main__":

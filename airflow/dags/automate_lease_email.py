@@ -4,24 +4,21 @@ from automation.send_lease_email import send_lease_expiry_notification
 from datetime import datetime
 from airflow.decorators import dag, task
 
-# import server config file
-server_config = "/home/asha/airflow/server-config.json"
+# import motherduck token and target source config
+server_config = "/home/asha/airflow/duckdb-config.json"
 
 with open(server_config, "r") as fp:
     config = json.load(fp)
-
-# prepare the details to connect to the databases
-host = config.get("host")
-user = config.get("user")
-root_pass = config.get("root_pass")
+   
+token = config['token']
+schema = 'bronze'
 base_table_name = 'dbo_lease_database'
 
 @task
 def send_email_task():
     send_lease_expiry_notification(
-    host=host, 
-    user=user, 
-    root_pass=root_pass, 
+    token=token,
+    schema=schema, 
     base_table_name=base_table_name
 )
     
