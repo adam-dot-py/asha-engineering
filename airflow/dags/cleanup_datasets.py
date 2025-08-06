@@ -1,4 +1,3 @@
-import duckdb
 import json
 from garbage_cleanup.garbage_cleanup import cleanup_data
 from garbage_cleanup.fuzzy_cleanup import fuzzy_group_data
@@ -49,7 +48,7 @@ def fuzzy_cleanup_tenant_data():
     )
        
 @dag(
-    dag_id="cleanup_garbage",
+    dag_id="cleanup_datasets",
     schedule="*/25 * * * *", # every 25 minutes
     start_date=datetime(2025, 8, 5),
     catchup=False,
