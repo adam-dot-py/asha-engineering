@@ -1,7 +1,7 @@
 import json
 from garbage_cleanup.garbage_cleanup import cleanup_data
 from garbage_cleanup.fuzzy_cleanup import fuzzy_group_data
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow.decorators import dag, task
 
 # import motherduck token and target source config
@@ -32,7 +32,7 @@ def fuzzy_cleanup_tenant_data():
 @dag(
     dag_id="cleanup_datasets",
     schedule="*/25 * * * *", # every 25 minutes
-    start_date=datetime(2025, 8, 5),
+    start_date=datetime.now() - timedelta(days=1),
     catchup=False,
     tags=["optimisation"]
 )
