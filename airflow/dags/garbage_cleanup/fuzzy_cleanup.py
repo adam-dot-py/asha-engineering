@@ -2,7 +2,7 @@
 import duckdb
 import json
 from rapidfuzz import fuzz
-from functools import wraps, lru_cache
+from functools import wraps
 
 # dictionary containing keywords
 categories = {
@@ -40,7 +40,6 @@ class NotTextError(Exception):
     "Raised if the value passed is not a string"
     pass
 
-@lru_cache(maxsize=None)
 def category_match(name: str, categories: dict) -> str:
     """takes a string and compares it to a list of keywords taken from a dictionary, 
     returning the closest matching key (or category)
