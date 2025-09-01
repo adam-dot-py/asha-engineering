@@ -1,4 +1,7 @@
 import json
+from airflow.sdk import chain
+from airflow.decorators import dag, task
+from datetime import datetime
 from domain_queries.dim__tsm_scales import create_domain_tsm_scales_table
 from domain_queries.dim__tsm_scale_responses import create_domain_tsm_scale_responses_table
 from domain_queries.dim__tsm_questions import create_domain_tsm_questions_table
@@ -9,8 +12,8 @@ from domain_queries.fact__remittance import transform_dbo_remittance_data
 from domain_queries.fact__clawbacks import transform_dbo_clawbacks_data
 from domain_queries.fact__voids import transform_dbo_voids_data
 from domain_queries.fact__support_notes import transform_dbo_support_notes_data
-from datetime import datetime
-from airflow.decorators import dag, task
+
+
 
 # import motherduck token
 server_config = "/home/asha/airflow/duckdb-config.json"
@@ -129,24 +132,27 @@ def generate_fact_support_notes_data():
 )
 def generate_domain_data():
      
-    domain_scales = generate_domain_tsm_scales_table()
-    domain_scale_responses = generate_domain_tsm_scale_responses_table()
-    domain_questions = generate_domain_tsm_questions_table()
+    d1 = domain_scales = generate_domain_tsm_scales_table()
+    d2 = domain_scale_responses = generate_domain_tsm_scale_responses_table()
+    d3 = domain_questions = generate_domain_tsm_questions_table()
     # fact_responses = generate_fact_tsm_responses()
     # fact_comments = generate_fact_tsm_comments()
-    fact_tenant_records = generate_fact_tenant_records()
-    fact_remittance = generate_fact_remittance_data()
-    fact_clawbacks = generate_fact_clawbacks_data()
-    fact_voids = generate_fact_voids_data()
-    fact_support_notes = generate_fact_support_notes_data()
+    f1 = fact_tenant_records = generate_fact_tenant_records()
+    f2 = fact_remittance = generate_fact_remittance_data()
+    f3 = fact_clawbacks = generate_fact_clawbacks_data()
+    f4 = fact_voids = generate_fact_voids_data()
+    f5 = fact_support_notes = generate_fact_support_notes_data()
     
-    domain_tasks = [domain_scales, domain_scale_responses, domain_questions]
-    fact_tasks = [fact_tenant_records, fact_remittance, fact_clawbacks, fact_voids, fact_support_notes]
+    chain(d1, d2, d3)
+    chain(f1, f2, f3, f4, f5)
+    
+    # domain_tasks = [domain_scales, domain_scale_responses, domain_questions]
+    # fact_tasks = [fact_tenant_records, fact_remittance, fact_clawbacks, fact_voids, fact_support_notes]
     # fact_responses, fact_comments,
     
     # domain tables need to update before facts
-    for d in domain_tasks:
-        for f in fact_tasks:
-            d >> f
+    # for d in domain_tasks:
+    #     for f in fact_tasks:
+    #         d >> f
             
 dag_instance = generate_domain_data()

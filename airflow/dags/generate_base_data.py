@@ -1,4 +1,9 @@
 import json
+from pathlib import Path
+from datetime import datetime
+from airflow.decorators import dag, task
+from airflow.sdk import chain
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from base_queries.get_tsm_data import create_base_tsm_table
 from base_queries.get_remittance_data import extract_dbo_remittance_data
 from base_queries.get_property_submissions_data import extract_dbo_property_data
@@ -13,9 +18,6 @@ from base_queries.get_rc_ratio_data import extract_dbo_rc_ratio_data
 from base_queries.get_gross_surplus import extract_dbo_gross_surplus
 from base_queries.get_clawbacks_data import extract_dbo_clawback_data
 from base_queries.get_piop import extract_dbo_piop
-from pathlib import Path
-from datetime import datetime
-from airflow.decorators import dag, task
 
 # import motherduck token and target source config
 target_source_config = "/home/asha/airflow/target-source-config.json"
@@ -183,19 +185,21 @@ def generate_dbo_piop():
     tags=["base_data"]
 )
 def generate_base_data():
-    generate_tsm_responses()
-    generate_dbo_remittance()
-    generate_dbo_clawback_data()
-    generate_dbo_property_data()
-    generate_dbo_hqi_data()
-    generate_dbo_voids_data()
-    generate_dbo_property_database_data()
-    generate_dbo_leavers_data()
-    generate_dbo_lease_terminations_data()
-    generate_dbo_dal_properties_data()
-    generate_dbo_dal_summary_data()
-    generate_dbo_rc_ratio_data()
-    generate_dbo_gross_surplus()
-    generate_dbo_piop()
+    op1 = generate_tsm_responses()
+    op2 = generate_dbo_remittance()
+    op3 = generate_dbo_clawback_data()
+    op4 = generate_dbo_property_data()
+    op5 = generate_dbo_hqi_data()
+    op6 = generate_dbo_voids_data()
+    op7 = generate_dbo_property_database_data()
+    op8 = generate_dbo_leavers_data()
+    op9 = generate_dbo_lease_terminations_data()
+    op10 = generate_dbo_dal_properties_data()
+    op11 = generate_dbo_dal_summary_data()
+    op12 = generate_dbo_rc_ratio_data()
+    op13 = generate_dbo_gross_surplus()
+    op14 = generate_dbo_piop()
+    
+    chain(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13)
     
 dag_instance = generate_base_data()
