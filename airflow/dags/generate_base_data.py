@@ -18,6 +18,9 @@ from base_queries.get_rc_ratio_data import extract_dbo_rc_ratio_data
 from base_queries.get_gross_surplus import extract_dbo_gross_surplus
 from base_queries.get_clawbacks_data import extract_dbo_clawback_data
 from base_queries.get_piop import extract_dbo_piop
+from base_queries.get_support_notes_data import extract_dbo_support_notes_data
+from base_queries.get_lease_database import extract_dbo_lease_database
+from base_queries.get_flage_certificates import extract_dbo_flage_certificates
 
 # import motherduck token and target source config
 target_source_config = "/home/asha/airflow/target-source-config.json"
@@ -177,6 +180,36 @@ def generate_dbo_piop():
         target_sheet='PIOP'
     )
     
+@task
+def generate_dbo_support_notes():
+    extract_dbo_support_notes_data(
+        token=token,
+        schema=schema,
+        table_name='dbo_support_notes', 
+        target_source_path=target_source_path, 
+        target_sheet='Support Notes'
+    )
+    
+@task
+def generate_dbo_lease_database():
+    extract_dbo_lease_database(
+        token=token,
+        schema=schema,
+        table_name='dbo_lease_database', 
+        target_source_path=target_source_path, 
+        target_sheet='Lease Database'
+    )
+    
+@task
+def generate_flage_certificates():
+    extract_dbo_flage_certificates(
+        token=token,
+        schema=schema,
+        table_name='dbo_flage_certificates', 
+        target_source_path=target_source_path, 
+        target_sheet='Flage Certificates'
+    )
+    
 @dag(
     dag_id="generate_base_data",
     schedule="*/15 * * * *", # every 15 minutes
@@ -199,7 +232,10 @@ def generate_base_data():
     op12 = generate_dbo_rc_ratio_data()
     op13 = generate_dbo_gross_surplus()
     op14 = generate_dbo_piop()
+    op15 = generate_dbo_support_notes()
+    op16 = generate_dbo_lease_database()
+    op17 = generate_flage_certificates()
     
-    chain(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13)
+    chain(op1, op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15, op16, op17)
     
 dag_instance = generate_base_data()

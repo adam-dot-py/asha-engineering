@@ -1,15 +1,15 @@
 import json
 from fuzzywuzzy import process, fuzz
 
-def lookup_support_provider(value):
+# import server config file
+provider_config = "/home/asha/airflow/support-providers-config.json"
+
+with open(provider_config, "r") as fp:
+  config = json.load(fp)
+
+def lookup_support_provider(value: str) -> str:
     """_docstring
     """
-    
-    # import server config file
-    provider_config = "/home/asha/airflow/support-providers-config.json"
-
-    with open(provider_config, "r") as fp:
-      config = json.load(fp)
     
     # Extract the list of housing providers
     provider_list = config['housing_providers']

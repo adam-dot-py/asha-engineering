@@ -61,7 +61,7 @@ def category_match(name: str, categories: dict) -> str:
                     # compare the keyword and find the closest match, return the associated category
                     if fuzz.partial_ratio(keyword.lower(), name.lower()) > 80:
                         return category
-            return 'Other including Housing Associations'
+            return 'Other including Housing Associations'            
         else:
             raise NotTextError
     except NotTextError:
@@ -91,7 +91,7 @@ def motherduck_connection(token):
     return connection_decorator
 
 @motherduck_connection(token=token)
-def fuzzy_group_data(bronze_schema, bronze_table_name, column, group_column_name, con, **kwargs):
+def fuzzy_group_data(bronze_schema, bronze_table_name, column, con, **kwargs):
     """_docstring
     
     """
@@ -121,6 +121,5 @@ if __name__ == "__main__":
         token=token,
         bronze_schema=bronze_schema,
         bronze_table_name=bronze_table_name,
-        column=column,
-        group_column_name='GroupedReferralAgency'
+        column=column
     )

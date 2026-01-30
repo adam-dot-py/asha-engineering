@@ -138,7 +138,7 @@ def create_base_tsm_table(token, schema, table_name: str, tsm_file: str, tsm_sea
     
     # set the new headers
     df.columns = tsm_column_headers
-    
+
     # write to motherduck
     con.sql(f"CREATE OR REPLACE TABLE {schema}.{table_name} AS SELECT * FROM df;")
     con.close()

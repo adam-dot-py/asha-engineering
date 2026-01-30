@@ -93,10 +93,10 @@ def send_lease_expiry_notification(token, schema, base_table_name, con, **kwargs
             support_provider = row['SupportProviders']
             lease_end_date = row['LeaseEndDate'].strftime(format='%d %B %Y')
             delta = row['LeaseEndDate'] - current_date
-            expiring_lease_value = f"{support_provider}: {property_address} expires in {delta.days} days on {lease_end_date}"
+            expiring_lease_value = f"- {support_provider}: {property_address} expires in {delta.days} days on {lease_end_date}"
             expiring_leases_list.append(expiring_lease_value)
         
-        expiring_leases_fmt = '\n'.join(expiring_leases_list)
+        expiring_leases_fmt = '\n\n'.join(expiring_leases_list)
         
         # send email
         formatted_current_date = current_date.strftime("%d %B %Y")

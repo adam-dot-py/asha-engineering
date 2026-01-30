@@ -51,6 +51,17 @@ def extract_dbo_gross_surplus(token, schema, table_name, target_source_path: str
                             # add load date
                             df['LoadDate'] = load_date
                             
+                            # ensure the dataframe is alligned with expected datatypes
+                            df['Surplus'] = (
+                                df['Surplus']
+                                    .astype(str)
+                                    .str.replace('£', '', regex=False)
+                                    .str.replace('\xa0', '', regex=False)
+                                    .str.replace(',', '', regex=False)
+                                    .str.replace('nan', '0')
+                                    .astype(int)
+                            )
+
                             # define table structure
                             expected_schema = [
                                 "Cycle",
@@ -60,7 +71,7 @@ def extract_dbo_gross_surplus(token, schema, table_name, target_source_path: str
                             # define table datatypes
                             column_data_types = {
                                 "Cycle": 'VARCHAR(10)',
-                                "Surplus": "FLOAT"
+                                "Surplus": "INTEGER"
                             }
                                                                  
                             # add load date

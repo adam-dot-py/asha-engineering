@@ -36,6 +36,7 @@
 *.json
 
 # Various folders
+.dbt
 .aws
 .duckdb
 .azure
@@ -74,6 +75,13 @@ airflow/server-config.json
 airflow/email-config.json
 airflow/target-source-config.json
 snap/
+airflow/dags/bronze/raw
+airflow/dags/incremental/incoming/load-tenant-data/source
+airflow/dags/incremental/incoming/load-tenant-data/processing
+airflow/dags/incremental/incoming/load-tenant-data/processed
+airflow/dags/incremental/incoming/load-tenant-data/errors
+airflow/database
+data_lake
 
 # config files
 support-providers-config.json

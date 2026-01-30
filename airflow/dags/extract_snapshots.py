@@ -1,0 +1,190 @@
+import json
+from pathlib import Path
+from datetime import datetime
+from airflow.decorators import dag, task
+from airflow.sdk import chain
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+
+from bronze.job_extract_clawbacks import extract_clawbacks
+from bronze.job_extract_dal_summary import extract_dal_summary
+from bronze.job_extract_flage_certificates import extract_flage_certificates
+from bronze.job_extract_gross_surplus import extract_gross_surplus
+from bronze.job_extract_hqi import extract_hqi
+from bronze.job_extract_lease_database import extract_lease_database
+from bronze.job_extract_lease_terminations import extract_lease_terminations
+from bronze.job_extract_leavers import extract_leavers
+from bronze.job_extract_master_property_database import extract_property_database
+from bronze.job_extract_piop import extract_piop
+from bronze.job_extract_properties_sp_dal import extract_properties_sp_dal
+from bronze.job_extract_property_submissions import extract_property_submissions
+from bronze.job_extract_rc_ratio import extract_rc_ratio
+from bronze.job_extract_remittance import extract_remittances
+from bronze.job_extract_voids import extract_voids
+
+# import motherduck token and target source config
+target_source_config = "/home/asha/airflow/target-source-config.json"
+server_config = "/home/asha/airflow/duckdb-config.json"
+    
+with open(target_source_config, "r") as t_con:
+    target_config = json.load(t_con)
+
+with open(server_config, "r") as fp:
+    config = json.load(fp)
+    
+token = config['token']
+target_source_path = target_config.get("target_source_path")
+schema = "bronze"
+
+# this is the path to the tsm-responses file
+tsm_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-responses.xlsx")
+tsm_sea_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-sea-responses.xlsx")
+
+@task
+def task_extract_clawbacks():
+    extract_clawbacks(
+        table_name='clawbacks',
+        target_source_path=target_source_path,
+        target_sheet='Clawbacks'
+    )
+    
+@task
+def task_extract_dal_summary():
+    extract_dal_summary(
+        table_name='dal_summary',
+        target_source_path=target_source_path,
+        target_sheet='DAL Summary'
+    )
+
+@task
+def task_extract_flage_certificates():
+    extract_flage_certificates(
+        table_name='flage_certificates',
+        target_source_path=target_source_path,
+        target_sheet='Flage Certificates'
+    )
+    
+@task
+def task_extract_gross_surplus():
+    extract_gross_surplus(
+        table_name='gross_surplus',
+        target_source_path=target_source_path,
+        target_sheet='Gross Surplus'
+    )
+    
+@task
+def task_extract_hqi():
+    extract_hqi(
+        table_name='hqi',
+        target_source_path=target_source_path,
+        target_sheet='HQIs'
+    )
+    
+@task
+def task_extract_lease_database():
+    extract_lease_database(
+        table_name='lease_database',
+        target_source_path=target_source_path,
+        target_sheet='Lease Database'
+    )
+
+@task
+def task_extract_lease_terminations():
+    extract_lease_terminations(
+        table_name='lease_terminations',
+        target_source_path=target_source_path,
+        target_sheet='Lease Termination List'
+    )
+    
+@task
+def task_extract_leavers():
+    extract_leavers(
+        table_name='leavers',
+        target_source_path=target_source_path,
+        target_sheet='Leavers'
+    )
+
+@task
+def task_extract_property_database():
+    extract_property_database(
+        table_name='master_property_database',
+        target_source_path=target_source_path,
+        target_sheet='Master Property Database'
+    )
+
+@task
+def task_extract_piop():
+    extract_piop(
+        table_name='piop',
+        target_source_path=target_source_path,
+        target_sheet='PIOP'
+    )
+
+@task
+def task_extract_properties_sp_dal():
+    extract_properties_sp_dal(
+        table_name='properties_sp_dal',
+        target_source_path=target_source_path,
+        target_sheet='Properties Under SP with DAL'
+    )
+    
+@task
+def task_extract_properties_submissions():
+    extract_property_submissions(
+        table_name='property_submissions',
+        target_source_path=target_source_path,
+        target_sheet='Property Sub'
+    )
+    
+@task
+def task_extract_rc_ratio():
+    extract_rc_ratio(
+        table_name='rc_ratio',
+        target_source_path=target_source_path,
+        target_sheet='RC Ratio'
+    )
+    
+@task
+def task_extract_remittances():
+    extract_remittances(
+        table_name='remittances',
+        target_source_path=target_source_path,
+        target_sheet='Remittances'
+    )
+    
+@task
+def task_extract_voids():
+    extract_voids(
+        table_name='voids',
+        target_source_path=target_source_path,
+        target_sheet='Voids'
+    )
+  
+@dag(
+    dag_id="extract_snapshots",
+    schedule="0 9-18 * * 1-5", # every mon-fri between 9 and 6
+    start_date=datetime(2026, 1, 21),
+    catchup=False,
+    tags=["raw_data"]
+)
+def extract_snapshots():
+    task_1 = task_extract_clawbacks()
+    task_2 = task_extract_dal_summary()
+    task_3 = task_extract_flage_certificates()
+    task_4 = task_extract_gross_surplus()
+    task_5 = task_extract_hqi()
+    task_6 = task_extract_lease_database()
+    task_7 = task_extract_lease_terminations()
+    task_8 = task_extract_leavers()
+    task_9 = task_extract_property_database()
+    task_10 = task_extract_piop()
+    task_11 = task_extract_properties_sp_dal()
+    task_12 = task_extract_properties_submissions()
+    task_13 = task_extract_rc_ratio()
+    task_14 = task_extract_remittances()
+    task_15 = task_extract_voids()
+    
+    chain(task_1, task_2, task_3, task_4, task_5, task_6,
+          task_7, task_8, task_9, task_10, task_11, task_12,
+          task_13, task_14, task_15)
+    
+dag_instance = extract_snapshots()
