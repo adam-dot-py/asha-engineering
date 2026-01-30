@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: history
+    schema: history
+    description: SCD2 tables containing full history of changes for ASHA SEA data
+    tables:
+      - name: hist_master_property_database
+      - name: hist_leavers
+      - name: hist_clawbacks
+      - name: hist_voids
+      - name: hist_dal_summary

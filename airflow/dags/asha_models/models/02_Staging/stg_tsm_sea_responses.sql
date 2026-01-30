@@ -1,0 +1,1 @@
+select * from {{ source('main_bronze', 'raw_tsm_sea_responses') }}

@@ -1,0 +1,8 @@
+version: 2
+
+models:
+  - name: raw_flage_certificates
+    columns:
+      - name: id
+        tests:
+          - not_null  # Fails if any ID is missing

@@ -1,0 +1,43 @@
+name: 'asha_models'
+version: '1.0.0'
+
+profile: 'asha_models'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  asha_models:
+    01_Loading:
+      +materialized: view
+      +schema: bronze
+      +file_format: parquet
+    02_Staging:
+      +schema: staging
+      +materialized: view
+    03_Silver:
+      +materialized: table
+      +schema: silver
+      +file_format: parquet
+    04_Gold:
+      +materialized: table
+      +schema: gold
+      +file_format: parquet
+
+snapshots:
+  asha_models:
+    +schema: history
+    +file_format: parquet
+
+seeds:
+  asha_models:
+    +schema: reference
+    +file_format: parquet
