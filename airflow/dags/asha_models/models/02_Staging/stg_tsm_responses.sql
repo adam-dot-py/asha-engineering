@@ -1,1 +1,1 @@
-select * from {{ source('main_bronze', 'raw_tsm_responses') }}
+select * from {{ ref('raw_tsm_responses') }}

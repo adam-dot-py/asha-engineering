@@ -21,8 +21,8 @@ models:
       +schema: bronze
       +file_format: parquet
     02_Staging:
-      +schema: staging
       +materialized: view
+      +schema: staging
     03_Silver:
       +materialized: table
       +schema: silver
@@ -34,6 +34,7 @@ models:
 
 snapshots:
   asha_models:
+    +materialized: snapshot
     +schema: history
     +file_format: parquet
 

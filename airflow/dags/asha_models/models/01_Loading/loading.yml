@@ -6,3 +6,25 @@ models:
       - name: id
         tests:
           - not_null  # Fails if any ID is missing
+  - name: raw_clawbacks
+    description: "Raw data detailing clawback information per cycle by support provider"
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: support_providers
+        data_type: varchar
+        constraints: 
+          - type: not_null
+          - type: primary_key
+        tests:
+          - not_null
+      - name: cycle
+        data_type: varchar
+      - name: value
+        data_type: double
+      - name: ingested_at_ts
+        data_type: timestamp
+      - name: source_file
+        data_type: varchar
+      

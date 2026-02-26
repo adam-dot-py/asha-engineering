@@ -1,24 +1,21 @@
 {{config(
-  post_hook="COPY {{ this }} TO '/home/asha/airflow/dags/gold/semantic/gold_dal_summary.parquet' (FORMAT PARQUET)"
+  post_hook="COPY {{ this }} TO '/home/asha/airflow/dags/gold/semantic/gold_remittances.parquet' (FORMAT PARQUET)"
 )}}
 
 SELECT
-    a.id,
     a.support_providers as original_support_providers,
     r.support_providers as adj_support_providers,
-    a.total_units_per_provider,
-    a.properties_with_director_as_landlord,
-    a.units_owned_by_support_providers,
-    a.leased_units_with_ash_shahada,
+    a.cycle,
+    a.value,
     CASE 
         WHEN LOWER(TRIM(a.support_providers)) = LOWER(TRIM(r.support_providers)) 
         THEN 0 
         ELSE levenshtein(LOWER(TRIM(a.support_providers)), LOWER(TRIM(r.support_providers)))
     END AS distance
-FROM {{ ref('latest_dal_summary') }} a
+FROM {{ ref('latest_remittances') }} a
 CROSS JOIN {{ ref('ref_support_providers') }} r
 QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY a.id 
+    PARTITION BY a.support_providers 
     ORDER BY 
     CASE 
         WHEN LOWER(TRIM(a.support_providers)) = LOWER(TRIM(r.support_providers)) 

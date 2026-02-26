@@ -1,9 +1,9 @@
-version: 2
+# version: 2
 
-sources:
-  - name: main_silver
-    schema: main_silver
-    description: Cleaned datasets ready for semantic modelling
-    tables:
-      - name: std_tsm_responses
-      - name: std_tsm_sea_responses
+# sources:
+#   - name: main_silver
+#     schema: main_silver
+#     description: Cleaned datasets ready for semantic modelling
+#     tables:
+#       - name: std_tsm_responses
+#       - name: std_tsm_sea_responses
