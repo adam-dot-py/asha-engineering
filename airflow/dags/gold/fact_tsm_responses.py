@@ -64,12 +64,6 @@ def create_fact_tsm_responses(silver_table, gold_table):
     
 if __name__ == '__main__':
     
-    # # import server config file
-    # server_config = "/home/asha/airflow/server-config.json"
-
-    # with open(server_config, "r") as fp:
-    #     config = json.load(fp)
-
     # prepare the details to connect to the databases
     silver_table = 'std_all_tsm_survey_responses'
     gold_table = 'fact_tsm_responses'
