@@ -100,5 +100,3 @@ airflow-start.sh
 # duckdb history
 .duckdb_history
 ducklake_setup.py
-/home/asha/airflow/dags/silver/history/*.parquet
-airflow/dags/silver/history/hist_clawbacks.parquet
