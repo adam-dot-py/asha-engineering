@@ -1,0 +1,1 @@
+select * from "asha_dev"."main_bronze"."raw_tsm_responses"

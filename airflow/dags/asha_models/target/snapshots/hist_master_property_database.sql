@@ -1,0 +1,1 @@
+{{ snapshot_hist_master_property_database() }}

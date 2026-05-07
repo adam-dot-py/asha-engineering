@@ -19,7 +19,7 @@ def task_execute_snapshots():
 
 @task.bash(pool='duckdb_pool')
 def task_execute_silver():
-    return "cd /home/asha/airflow/dags/asha_models && dbt build --select 03_Silver --target dev"
+    return "cd /home/asha/airflow/dags/asha_models && dbt build --select 03_Silver --target dev --exclude latest_tenant_data"
 
 @task.bash(pool='duckdb_pool')
 def task_execute_gold():

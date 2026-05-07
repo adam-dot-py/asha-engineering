@@ -78,48 +78,48 @@ with open(server_config, "r") as fp:
     config = json.load(fp)
 token = config['token']
 
-def motherduck_connection(token):
-    def connection_decorator(func):
-        con = duckdb.connect(f'md:?motherduck_token={token}')
+# def motherduck_connection(token):
+#     def connection_decorator(func):
+#         con = duckdb.connect(f'md:?motherduck_token={token}')
         
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # pass con as a keyword argument for use in other functions
-            return func(*args, con=con, **kwargs)
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             # pass con as a keyword argument for use in other functions
+#             return func(*args, con=con, **kwargs)
     
-        return wrapper
-    return connection_decorator
+#         return wrapper
+#     return connection_decorator
 
-@motherduck_connection(token=token)
-def fuzzy_group_data(bronze_schema, bronze_table_name, column, con, **kwargs):
+# @motherduck_connection(token=token)
+def fuzzy_group_data(schema, table_name, column, **kwargs):
     """_docstring
     
     """
         
     # connect to motherduck
-    con.sql("USE asha_production;")
+    con = duckdb.connect('~/airflow/database/asha_prod.duckdb')
 
     # get the bronze table
-    df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
+    df = con.sql(f"SELECT * FROM {schema}.{table_name};").df()
     df = df.drop_duplicates()
     
     # update it and find matches
     df[column] = df[column].astype(str).apply(lambda x: category_match(replace_text(x), categories=categories))
     
     # close motherduck
-    con.sql(f"CREATE OR REPLACE TABLE {bronze_schema}.{bronze_table_name} AS SELECT * from df;")
+    con.sql(f"CREATE OR REPLACE TABLE {schema}.{table_name} AS SELECT * from df;")
     con.close()
 
 if __name__ == "__main__":
 
     # this is the ETL task
-    bronze_schema = 'bronze'
-    bronze_table_name = None
+    schema = 'main_silver'
+    table_name = None
     column = None
     
     fuzzy_group_data(
         token=token,
-        bronze_schema=bronze_schema,
-        bronze_table_name=bronze_table_name,
+        schema=schema,
+        table_name=table_name,
         column=column
     )

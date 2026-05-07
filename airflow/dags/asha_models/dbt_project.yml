@@ -20,17 +20,23 @@ models:
       +materialized: view
       +schema: bronze
       +file_format: parquet
+      +static_analysis: off
+      +pre-hook:
+        - "LOAD excel"
     02_Staging:
       +materialized: view
       +schema: staging
+      +static_analysis: off
     03_Silver:
       +materialized: table
       +schema: silver
       +file_format: parquet
+      +static_analysis: off
     04_Gold:
       +materialized: table
       +schema: gold
       +file_format: parquet
+      +static_analysis: off
 
 snapshots:
   asha_models:

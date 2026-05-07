@@ -1,0 +1,1 @@
+{{ snapshot_hist_properties_sp_dal() }}

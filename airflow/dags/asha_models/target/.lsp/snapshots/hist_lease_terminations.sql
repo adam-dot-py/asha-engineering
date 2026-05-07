@@ -1,0 +1,1 @@
+{{ snapshot_hist_lease_terminations() }}
