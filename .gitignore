@@ -65,6 +65,7 @@ server-backups
 .sudo_as_admin_successful
 .wget-hsts
 .gitconfig
+/home/asha/.copilot
 airflow/dags/__pycache__
 airflow/dags/domain_queries/__pycache__
 airflow/logs
