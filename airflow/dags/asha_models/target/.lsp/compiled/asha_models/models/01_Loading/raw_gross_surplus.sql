@@ -1,0 +1,1 @@
+select * from read_parquet('/home/asha/airflow/dags/bronze/raw/raw_gross_surplus/*.parquet')

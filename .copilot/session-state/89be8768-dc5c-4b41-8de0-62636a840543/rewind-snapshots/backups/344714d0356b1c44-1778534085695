@@ -1,0 +1,41 @@
+from garbage_cleanup.garbage_cleanup import cleanup_data
+from garbage_cleanup.fuzzy_cleanup import fuzzy_group_data
+from datetime import datetime, timedelta
+from airflow.decorators import dag, task
+    
+@task
+def cleanup_tenant_data():
+    cleanup_data(
+        schema='main_silver',
+        table_name='latest_tenant_data'
+    )
+    
+@task
+def fuzzy_cleanup_tenant_data():
+    fuzzy_group_data(
+        schema='main_silver',
+        table_name='latest_tenant_data',
+        column='ReferralAgency', 
+        group_column_name='GroupedReferralAgency'
+    )
+    
+@task.bash(pool='duckdb_pool')
+def task_close_duckdb_connection():
+    return "/home/asha/airflow_env/bin/python -c \"import duckdb; conn = duckdb.connect('/home/asha/data_lake/asha_prod.duckdb'); conn.execute('CHECKPOINT'); conn.close(); print('DuckDB checkpoint complete and connection closed')\""
+       
+@dag(
+    dag_id="cleanup_datasets",
+    schedule=None,
+    start_date=datetime.now() - timedelta(days=1),
+    catchup=False,
+    tags=["optimisation"]
+)
+def garbage_cleanup():
+    t1 = cleanup_tenant_data()
+    t2 = fuzzy_cleanup_tenant_data()
+    t3 = task_close_duckdb_connection.override(task_id='close_duckdb_after_cleanup')() 
+    t4 = task_close_duckdb_connection.override(task_id='close_duckdb_after_fuzzy_cleanup')()
+
+    t1 >> t3 >> t2 >> t4
+   
+dag_instance = garbage_cleanup()

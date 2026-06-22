@@ -1,1 +1,0 @@
-{{ test_not_null(column_name="support_providers", model=get_where_subquery(ref('raw_clawbacks'))) }}

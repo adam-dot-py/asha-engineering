@@ -1,14 +1,19 @@
 WITH latest_snapshot AS (
-    SELECT
+    SELECT 
       CAST(hash(support_providers) % 9223372036854775807 AS BIGINT) AS support_provider_id,
-      support_providers,
-      cycle,
-      coalesce(try_cast(value as double), 0.0) as value,
-      ingested_at_ts,
-      source_file
+      *
     FROM "asha_prod"."main_bronze"."raw_voids"
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY support_provider_id ORDER BY ingested_at_ts DESC) = 1
+    WHERE ingested_at_ts = (
+      SELECT max(ingested_at_ts)
+      FROM "asha_prod"."main_bronze"."raw_voids"
+    )
 )
 
-SELECT *
+SELECT
+  support_provider_id,
+  support_providers,
+  cycle,
+  coalesce(try_cast(value as double), NULL) as value,
+  ingested_at_ts,
+  source_file
 FROM latest_snapshot

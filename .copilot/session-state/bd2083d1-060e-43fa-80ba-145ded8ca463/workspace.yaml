@@ -1,0 +1,10 @@
+id: bd2083d1-060e-43fa-80ba-145ded8ca463
+cwd: /home/asha/airflow/dags/asha_models
+user_named: false
+summary_count: 0
+created_at: 2026-05-13T22:55:32.322Z
+updated_at: 2026-05-13T22:55:32.363Z
+git_root: /home/asha
+repository: adam-dot-py/asha-engineering
+host_type: github
+branch: main

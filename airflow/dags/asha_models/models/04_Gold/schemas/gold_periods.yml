@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: gold_periods
+    description: >
+      This model contains the period information, including cycle number, quarter, and year.
+    config:
+      contract:
+        enforced: true
+      tags: ['reference']
+    columns:
+      - name: CycleNumber
+        description: "The cycle number for the period."
+        data_type: string
+      - name: Quarter
+        description: "The quarter of the year for the period."
+        data_type: string
+      - name: Year
+        description: "The year for the period."
+        data_type: string

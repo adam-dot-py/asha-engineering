@@ -1,0 +1,2 @@
+
+SET autoinstall_known_extensions=1

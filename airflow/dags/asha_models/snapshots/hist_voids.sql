@@ -2,11 +2,9 @@
 {{
     config(
         target_schema='history',
-        unique_key='support_provider_id',
+        unique_key=['support_providers', 'cycle'],
         strategy='check',
         check_cols=[
-            'support_providers',
-            'cycle',
             'value'
         ],
         post_hook="COPY {{ this }} TO '/home/asha/airflow/dags/silver/history/hist_voids.parquet' (FORMAT PARQUET)"

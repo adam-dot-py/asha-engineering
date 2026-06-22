@@ -1,0 +1,19 @@
+exposures:
+  - name: tenant_data_dashboard
+    label: "Tenant Data Dashboard"
+    type: dashboard
+    maturity: high
+    url: https://app.powerbi.com/links/EN0q3xdpsF?ctid=22b4a103-28e2-43cb-b6ff-1eeb75e0b747&pbi_source=linkShare
+    description: >
+       Detail tenant data information dashboard, critical for Asha operations.
+    depends_on:
+      - ref('raw_tenant_data')
+      - ref('stg_tenant_data')
+      - ref('hist_tenant_data')
+      - ref('latest_tenant_data')
+      - ref('ref_genders')
+      - ref('gold_tenant_data')
+      - ref('ref_periods')
+    owner:
+      name: Asha Data
+      email: data@ash-shahada.org

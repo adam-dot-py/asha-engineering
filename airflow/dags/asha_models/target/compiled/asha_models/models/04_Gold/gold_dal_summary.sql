@@ -3,11 +3,11 @@
 SELECT
     a.id,
     a.support_providers as original_support_providers,
-    r.support_providers as adj_support_providers,
-    a.total_units_per_provider,
-    a.properties_with_director_as_landlord,
-    a.units_owned_by_support_providers,
-    a.leased_units_with_ash_shahada,
+    r.support_providers as SupportProviders,
+    a.total_units_per_provider as TotalUnitsPerProvider,
+    a.properties_with_director_as_landlord as PropertieswithDirectorasLandlord,
+    a.units_owned_by_support_providers as UnitsownedbySupportProviders,
+    a.leased_units_with_ash_shahada as LeasedunitswithAshShahada,
     CASE 
         WHEN LOWER(TRIM(a.support_providers)) = LOWER(TRIM(r.support_providers)) 
         THEN 0 

@@ -61,7 +61,8 @@ with hashes as (
     LAG(hash(Tenant_SK, SexualOrientation)) OVER w AS prev_hash_SexualOrientation,
     LAG(hash(Tenant_SK, SpokenLanguage)) OVER w AS prev_hash_SpokenLanguage,
     LAG(hash(Tenant_SK, RiskAssessment)) OVER w AS prev_hash_RiskAssessment,
-    LAG(hash(Tenant_SK, LengthOfStay)) OVER w AS prev_hash_LengthOfStay
+    LAG(hash(Tenant_SK, LengthOfStay)) OVER w AS prev_hash_LengthOfStay,
+    LAG(hash(Tenant_SK, ProviderName)) OVER w AS prev_hash_ProviderName
   FROM "asha_prod"."main_staging"."stg_tenant_data"
   WINDOW w AS (PARTITION BY Tenant_SK ORDER BY CycleNumberValue DESC)
 )
@@ -90,7 +91,8 @@ SELECT
   CASE WHEN hash_SexualOrientation != prev_hash_SexualOrientation THEN 1 ELSE 0 END AS IsDifferent_SexualOrientation,
   CASE WHEN hash_SpokenLanguage != prev_hash_SpokenLanguage THEN 1 ELSE 0 END AS IsDifferent_SpokenLanguage,
   CASE WHEN hash_RiskAssessment != prev_hash_RiskAssessment THEN 1 ELSE 0 END AS IsDifferent_RiskAssessment,
-  CASE WHEN hash_LengthOfStay != prev_hash_LengthOfStay THEN 1 ELSE 0 END AS IsDifferent_LengthOfStay
+  CASE WHEN hash_LengthOfStay != prev_hash_LengthOfStay THEN 1 ELSE 0 END AS IsDifferent_LengthOfStay,
+  CASE WHEN hash_ProviderName != prev_hash_ProviderName THEN 1 ELSE 0 END AS IsDifferent_ProviderName
 FROM hashes
     );
   

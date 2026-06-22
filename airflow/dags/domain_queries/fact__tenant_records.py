@@ -56,8 +56,9 @@ def create_fact_tenant_records(bronze_schema, gold_schema, bronze_table_name, go
     """
     
     # connect to motherduck
-    con.sql("USE asha_production;")
-    con.sql(f"CREATE SCHEMA IF NOT EXISTS {gold_schema};")
+    con = duckdb.connect('~/airflow/database/asha_prod.duckdb')
+    # con.sql("USE asha_production;")
+    # con.sql(f"CREATE SCHEMA IF NOT EXISTS {gold_schema};")
     
     # get the bronze table
     df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
@@ -177,14 +178,19 @@ def create_fact_tenant_records(bronze_schema, gold_schema, bronze_table_name, go
     # write to motherduck
     con.sql(f"CREATE OR REPLACE TABLE {gold_schema}.{gold_table_name} AS SELECT * FROM df;")
     con.close()
+    
+    df.to_parquet(path='/home/asha/airflow/dags/gold/facts/fact_tenant_records.parquet',
+                  engine='fastparquet',
+                  compression='snappy',
+                  index=False)
 
 if __name__ == '__main__':
     
     # this is the ETL task
-    bronze_schema = 'bronze'
-    gold_schema = 'gold'
-    bronze_table_name = 'tenant_data'
-    gold_table_name = 'fact__tenant_records'
+    bronze_schema = 'main_silver'
+    gold_schema = 'main_gold'
+    bronze_table_name = 'hist_tenant_data'
+    gold_table_name = 'fact_tenant_records'
 
     create_fact_tenant_records(
         bronze_schema=bronze_schema,

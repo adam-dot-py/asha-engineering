@@ -1,0 +1,11 @@
+id: 89be8768-dc5c-4b41-8de0-62636a840543
+cwd: /home/asha
+git_root: /home/asha
+repository: adam-dot-py/asha-engineering
+host_type: github
+branch: main
+user_named: false
+summary_count: 0
+created_at: 2026-05-11T21:06:15.273Z
+updated_at: 2026-05-11T21:14:45.365Z
+name: Using the provider config file at /home/asha/airflow/support-providers-config.json, iterate over the excel files at /home/asha/airflow/dags/incremental/incoming/load-tenant-data/source for C95_TL onwards. We need to rename the files to the closest matching housing provider found in the JSON list -- but it has to be accurate, else just leave the name as it was. Be sure to keep the C95, C96 inthe file name etc, we are just changing the provider name to match. Create copies of the directories and s...

@@ -51,54 +51,57 @@ def transform_dbo_voids_data(bronze_schema, gold_schema, bronze_table_name, gold
     """
     
     # connect to motherduck
-    con.sql("USE asha_production;")
-    con.sql(f"CREATE SCHEMA IF NOT EXISTS {gold_schema};")
+    con = duckdb.connect('~/airflow/database/asha_prod.duckdb')
+    # con.sql(f"CREATE SCHEMA IF NOT EXISTS {gold_schema};")
     
     # Convert the result to a dataframe
     bronze_df = con.sql(f"SELECT * FROM {bronze_schema}.{bronze_table_name};").df()
     
     # drop the base load date
-    bronze_df = bronze_df.drop(columns='LoadDate')
+    # bronze_df = bronze_df.drop(columns='LoadDate')
+    
+    print(bronze_df.columns)
     
     # melt the dataframe
     mdf = pd.melt(
         bronze_df,
-        id_vars=["SupportProviders", "Units"],
-        var_name="Cycle",
-        value_name="Value",
+        id_vars=["support_providers", "units"],
+        var_name="cycle",
+        value_name="value",
     )
     
-    # add load date
-    load_date = datetime.now()
-    mdf['LoadDate'] = load_date
+    # # add load date
+    # load_date = datetime.now()
+    # mdf['LoadDate'] = load_date
     
-    expected_schema = [
-        "SupportProviders",
-        "Units",
-        "Cycle",
-        "Value",
-        "LoadDate"
-    ]
+    # expected_schema = [
+    #     "SupportProviders",
+    #     "Units",
+    #     "Cycle",
+    #     "Value",
+    #     "LoadDate"
+    # ]
     
-    column_data_types = {
-        "SupportProviders": 'VARCHAR(255)',
-        "Units": 'INTEGER',
-        "Cycle": 'VARCHAR(10)',
-        "Value": 'FLOAT',
-        "LoadDate": 'TIMESTAMP'
-    }
+    # column_data_types = {
+    #     "SupportProviders": 'VARCHAR(255)',
+    #     "Units": 'INTEGER',
+    #     "Cycle": 'VARCHAR(10)',
+    #     "Value": 'FLOAT',
+    #     "LoadDate": 'TIMESTAMP'
+    # }
     
-    # write to motherduck
-    con.sql(f"CREATE OR REPLACE TABLE {gold_schema}.{gold_table_name} AS SELECT * FROM mdf;")
-    con.close() 
+    # # write to motherduck
+    # con.sql(f"CREATE OR REPLACE TABLE {gold_schema}.{gold_table_name} AS SELECT * FROM mdf;")
+    # mdf.to_parquet(f'/home/asha/airflow/dags/gold/facts/{gold_table_name}.parquet', index=False, engine='pyarrow')
+    # con.close() 
                               
 if __name__ == "__main__":
     
     # this is the ETL task
-    bronze_schema = 'bronze'
-    gold_schema = 'gold'
-    bronze_table_name = 'dbo_voids'
-    gold_table_name = 'fact__voids'
+    bronze_schema = 'main_silver'
+    gold_schema = 'main_gold'
+    bronze_table_name = 'latest_voids'
+    gold_table_name = 'fact_voids'
 
     transform_dbo_voids_data(
         bronze_schema=bronze_schema,

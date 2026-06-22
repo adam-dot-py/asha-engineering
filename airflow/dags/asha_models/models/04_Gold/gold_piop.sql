@@ -3,8 +3,8 @@
 )}}
 
 SELECT
-    a.cycle,
-    a.paid_remittances,
-    a.received_remittances,
-    a.percentage_differences,
+    a.cycle as Cycle,
+    a.paid_remittances as PaidRemittances,
+    a.received_remittances as ReceivedRemittances,
+    a.percentage_differences as PercentageDifferences
 FROM {{ ref('latest_piop') }} a

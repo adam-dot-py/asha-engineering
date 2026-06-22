@@ -20,6 +20,8 @@ from bronze.job_extract_property_submissions import extract_property_submissions
 from bronze.job_extract_rc_ratio import extract_rc_ratio
 from bronze.job_extract_remittance import extract_remittances
 from bronze.job_extract_voids import extract_voids
+from bronze.job_extract_units import extract_units
+from bronze.job_extract_support_note_submissions import extract_support_notes_submissions
 
 # import motherduck token and target source config
 target_source_config = "/home/asha/airflow/target-source-config.json"
@@ -39,7 +41,7 @@ schema = "bronze"
 tsm_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-responses.xlsx")
 tsm_sea_file = Path(r"/mnt/c/Users/ASHA Server/OneDrive - Ash-Shahada Housing Association/source/surveying/tsm-sea-responses.xlsx")
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_clawbacks():
     extract_clawbacks(
         table_name='clawbacks',
@@ -47,7 +49,7 @@ def task_extract_clawbacks():
         target_sheet='Clawbacks'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_dal_summary():
     extract_dal_summary(
         table_name='dal_summary',
@@ -55,7 +57,7 @@ def task_extract_dal_summary():
         target_sheet='DAL Summary'
     )
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_flage_certificates():
     extract_flage_certificates(
         table_name='flage_certificates',
@@ -63,7 +65,7 @@ def task_extract_flage_certificates():
         target_sheet='Flage Certificates'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_gross_surplus():
     extract_gross_surplus(
         table_name='gross_surplus',
@@ -71,7 +73,7 @@ def task_extract_gross_surplus():
         target_sheet='Gross Surplus'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_hqi():
     extract_hqi(
         table_name='hqi',
@@ -79,7 +81,7 @@ def task_extract_hqi():
         target_sheet='HQIs'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_lease_database():
     extract_lease_database(
         table_name='lease_database',
@@ -87,7 +89,7 @@ def task_extract_lease_database():
         target_sheet='Lease Database'
     )
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_lease_terminations():
     extract_lease_terminations(
         table_name='lease_terminations',
@@ -95,7 +97,7 @@ def task_extract_lease_terminations():
         target_sheet='Lease Termination List'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_leavers():
     extract_leavers(
         table_name='leavers',
@@ -103,7 +105,7 @@ def task_extract_leavers():
         target_sheet='Leavers'
     )
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_property_database():
     extract_property_database(
         table_name='master_property_database',
@@ -111,7 +113,7 @@ def task_extract_property_database():
         target_sheet='Master Property Database'
     )
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_piop():
     extract_piop(
         table_name='piop',
@@ -119,7 +121,7 @@ def task_extract_piop():
         target_sheet='PIOP'
     )
 
-@task
+@task(pool='duckdb_pool')
 def task_extract_properties_sp_dal():
     extract_properties_sp_dal(
         table_name='properties_sp_dal',
@@ -127,7 +129,7 @@ def task_extract_properties_sp_dal():
         target_sheet='Properties Under SP with DAL'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_properties_submissions():
     extract_property_submissions(
         table_name='property_submissions',
@@ -135,7 +137,7 @@ def task_extract_properties_submissions():
         target_sheet='Property Sub'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_rc_ratio():
     extract_rc_ratio(
         table_name='rc_ratio',
@@ -143,7 +145,7 @@ def task_extract_rc_ratio():
         target_sheet='RC Ratio'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_remittances():
     extract_remittances(
         table_name='remittances',
@@ -151,13 +153,33 @@ def task_extract_remittances():
         target_sheet='Remittances'
     )
     
-@task
+@task(pool='duckdb_pool')
 def task_extract_voids():
     extract_voids(
         table_name='voids',
         target_source_path=target_source_path,
         target_sheet='Voids'
     )
+
+@task(pool='duckdb_pool')
+def task_extract_units():
+    extract_units(
+        table_name='units',
+        target_source_path=target_source_path,
+        target_sheet='Voids'
+    )
+
+@task(pool='duckdb_pool') 
+def task_extract_support_notes_submissions():
+    extract_support_notes_submissions(
+        table_name='support_notes_submissions',
+        target_source_path=target_source_path,
+        target_sheet='Support Notes'
+    )
+
+@task.bash(pool='duckdb_pool')
+def task_close_duckdb_connection():
+    return "/home/asha/airflow_env/bin/python -c \"import duckdb; conn = duckdb.connect('/home/asha/data_lake/asha_prod.duckdb'); conn.execute('CHECKPOINT'); conn.close(); print('DuckDB checkpoint complete and connection closed')\""
   
 @dag(
     dag_id="extract_snapshots",
@@ -182,9 +204,12 @@ def extract_snapshots():
     task_13 = task_extract_rc_ratio()
     task_14 = task_extract_remittances()
     task_15 = task_extract_voids()
+    task_16 = task_extract_units()
+    task_17 = task_extract_support_notes_submissions()
+    task_18 = task_close_duckdb_connection()
     
     chain(task_1, task_2, task_3, task_4, task_5, task_6,
           task_7, task_8, task_9, task_10, task_11, task_12,
-          task_13, task_14, task_15)
-    
+          task_13, task_14, task_15, task_16, task_17, task_18)
+
 dag_instance = extract_snapshots()

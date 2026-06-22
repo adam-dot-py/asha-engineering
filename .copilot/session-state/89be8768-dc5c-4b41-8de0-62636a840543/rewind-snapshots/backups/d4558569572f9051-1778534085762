@@ -1,0 +1,2 @@
+
+SET autoload_known_extensions=1

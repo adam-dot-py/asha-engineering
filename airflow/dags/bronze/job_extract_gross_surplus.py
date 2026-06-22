@@ -25,6 +25,7 @@ def extract_gross_surplus(target_source_path: str, target_sheet: str, table_name
                 
                 # sterilise column headers
                 new_columns = [col.replace(' ', '_').lower() for col in polarsDF.columns]
+                new_columns = [col.replace('_', '') for col in new_columns]
                 polarsDF.columns = new_columns
                               
                 # add snapshot metadata
@@ -37,6 +38,8 @@ def extract_gross_surplus(target_source_path: str, target_sheet: str, table_name
                 save_dir_name = f"/home/asha/airflow/dags/bronze/raw/raw_{table_name}"
                 os.makedirs(save_dir_name, exist_ok=True)
                 polarsDF.write_parquet(f'{save_dir_name}/{file_name}')
+                
+                print(polarsDF.columns)
 
 if __name__ == "__main__":
     

@@ -1,0 +1,17 @@
+# Cache and local tooling artifacts
+__pycache__/
+\.ruff_cache/
+
+# Non-DAG support code and generated/query assets
+asha_models/
+automation/
+base_queries/
+bronze/
+custom_functions/
+domain_queries/
+garbage_cleanup/
+gold/
+incremental/
+latest_queries/
+logs/
+silver/

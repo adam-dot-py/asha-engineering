@@ -1,0 +1,5 @@
+
+
+select *
+from "asha_dev"."main_staging"."stg_hqi"
+order by id asc

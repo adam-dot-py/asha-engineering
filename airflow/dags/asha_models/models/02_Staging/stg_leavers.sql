@@ -1,7 +1,11 @@
 WITH latest_snapshot AS (
-    SELECT *
+    SELECT 
+      *
     FROM {{ ref('raw_leavers') }}
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY sr_no ORDER BY ingested_at_ts DESC) = 1
+    WHERE ingested_at_ts = (
+      SELECT max(ingested_at_ts)
+      FROM {{ ref('raw_leavers') }}
+    )
 )
 
 SELECT *

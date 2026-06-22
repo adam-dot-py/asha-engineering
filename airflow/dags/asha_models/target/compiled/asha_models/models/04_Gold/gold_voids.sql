@@ -1,24 +1,24 @@
 
 
 SELECT
-    a.support_providers as original_support_providers,
-    r.support_providers as adj_support_providers,
-    a.support_provider_id,
-    a.cycle,
-    a.value,
-    CASE 
-        WHEN LOWER(TRIM(a.support_providers)) = LOWER(TRIM(r.support_providers)) 
-        THEN 0 
-        ELSE levenshtein(LOWER(TRIM(a.support_providers)), LOWER(TRIM(r.support_providers)))
-    END AS distance
-FROM "asha_prod"."main_silver"."latest_voids" a
-CROSS JOIN "asha_prod"."main_reference"."ref_support_providers" r
-QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY a.support_providers 
-    ORDER BY 
-    CASE 
-        WHEN LOWER(TRIM(a.support_providers)) = LOWER(TRIM(r.support_providers)) 
-        THEN 0 
-        ELSE levenshtein(LOWER(TRIM(a.support_providers)), LOWER(TRIM(r.support_providers)))
-    END
-) = 1
+  a.support_provider_id,
+  a.support_providers as original_support_providers,
+  r.support_providers as SupportProviders,
+  a.cycle as Cycle,
+  a.value as Value,
+  a.units as Units,
+  a.ingested_at_ts,
+  a.source_file
+from "asha_prod"."main_silver"."latest_voids" a
+left join lateral (
+  select
+    s.support_providers
+  from "asha_prod"."main_reference"."ref_support_providers" s
+  order by
+    case
+      when lower(trim(a.support_providers)) = lower(trim(s.support_providers)) then 0
+      else levenshtein(lower(trim(a.support_providers)), lower(trim(s.support_providers)))
+    end,
+    s.support_providers
+  limit 1
+) r on true
